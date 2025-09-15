@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🍌 Attrape la banane – 2 joueurs 🍌</title>
+  <style>
+    body {
+      margin: 0;
+      background: lightblue;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      background: green;
+      display: block;
+      margin: auto;
+      border: 3px solid black;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+    .controls div {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    button {
+      font-size: 18px;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: orange;
+      color: white;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🍌 Attrape la banane – 2 joueurs 🍌</h1>
+  <p>J1: ⬅️ ➡️ | J2: A / D | Téléphone : boutons ci-dessous</p>
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+
+  <!-- Contrôles tactiles -->
+  <div class="controls">
+    <div>
+      <button onmousedown="keys['ArrowLeft']=true" onmouseup="keys['ArrowLeft']=false">⬅️ J1</button>
+      <button onmousedown="keys['ArrowRight']=true" onmouseup="keys['ArrowRight']=false">➡️ J1</button>
+    </div>
+    <div>
+      <button onmousedown="keys['a']=true" onmouseup="keys['a']=false">⬅️ J2</button>
+      <button onmousedown="keys['d']=true" onmouseup="keys['d']=false">➡️ J2</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Images
+    const monkey1Img = new Image();
+    monkey1Img.src = "https://i.imgur.com/8Km9tLL.png"; // singe J1
+    const monkey2Img = new Image();
+    monkey2Img.src = "https://i.imgur.com/LXSGs7n.png"; // singe J2 (autre image)
+    const bananaImg = new Image();
+    bananaImg.src = "https://i.imgur.com/6oKzS1K.png"; // banane
+
+    // Sons
+    const soundCatch = new Audio("https://www.myinstants.com/media/sounds/monkey.mp3");
+    const soundMiss = new Audio("https://www.myinstants.com/media/sounds/sad-trombone.mp3");
+
+    // Variables du jeu
+    let monkey1, monkey2, bananas, score1, score2, missed, gameOver, playing;
+    resetGame();
+
+    let keys = {};
+    document.addEventListener("keydown", e => {
+      keys[e.key] = true;
+      if (!playing && e.key === " ") startGame();
+    });
+    document.addEventListener("keyup", e => keys[e.key] = false);
+
+    function resetGame() {
+      monkey1 = { x: 100, y: 450, width: 50, height: 50 };
+      monkey2 = { x: 250, y: 450, width: 50, height: 50 };
+      bananas = [];
+      score1 = 0;
+      score2 = 0;
+      missed = 0;
+      gameOver = false;
+      playing = false;
+    }
+
+    function startGame() {
+      resetGame();
+      playing = true;
+    }
+
+    function spawnBanana() {
+      if (playing && !gameOver) {
+        bananas.push({ x: Math.random() * 360, y: 0, width: 30, height: 30 });
+      }
+    }
+
+    function update() {
+      if (!playing || gameOver) return;
+
+      // Déplacement J1 (flèches)
+      if (keys["ArrowLeft"] && monkey1.x > 0) monkey1.x -= 5;
+      if (keys["ArrowRight"] && monkey1.x < 350) monkey1.x += 5;
+
+      // Déplacement J2 (A / D)
+      if (keys["a"] && monkey2.x > 0) monkey2.x -= 5;
+      if (keys["d"] && monkey2.x < 350) monkey2.x += 5;
+
+      // Déplacer les bananes
+      for (let i = bananas.length - 1; i >= 0; i--) {
+        bananas[i].y += 4;
+
+        // Collision J1
+        if (bananas[i].y + bananas[i].height > monkey1.y &&
+            bananas[i].x < monkey1.x + monkey1.width &&
+            bananas[i].x + bananas[i].width > monkey1.x) {
+          bananas.splice(i, 1);
+          score1++;
+          soundCatch.play();
+          continue;
+        }
+
+        // Collision J2
+        if (bananas[i].y + bananas[i].height > monkey2.y &&
+            bananas[i].x < monkey2.x + monkey2.width &&
+            bananas[i].x + bananas[i].width > monkey2.x) {
+          bananas.splice(i, 1);
+          score2++;
+          soundCatch.play();
+          continue;
+        }
+
+        // Ratée
+        if (bananas[i].y > 500) {
+          bananas.splice(i, 1);
+          missed++;
+          soundMiss.play();
+          if (missed >= 5) gameOver = true;
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!playing) {
+        ctx.fillStyle = "white";
+        ctx.font = "30px Arial";
+        ctx.fillText("🍌 Attrape la banane 🍌", 60, 200);
+        ctx.font = "20px Arial";
+        ctx.fillText("Appuie sur ESPACE pour commencer", 50, 250);
+        return;
+      }
+
+      // Singes
+      ctx.drawImage(monkey1Img, monkey1.x, monkey1.y, monkey1.width, monkey1.height);
+      ctx.drawImage(monkey2Img, monkey2.x, monkey2.y, monkey2.width, monkey2.height);
+
+      // Bananes
+      bananas.forEach(b => ctx.drawImage(bananaImg, b.x, b.y, b.width, b.height));
+
+      // Score
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText("J1 Score: " + score1, 10, 20);
+      ctx.fillText("J2 Score: " + score2, 280, 20);
+      ctx.fillText("Ratées: " + missed, 150, 40);
+
+      if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "30px Arial";
+        ctx.fillText("GAME OVER", 120, 220);
+        ctx.fillStyle = "yellow";
+        ctx.font = "20px Arial";
+        ctx.fillText("J1: " + score1 + " | J2: " + score2, 130, 260);
+        ctx.fillText("Appuie sur ESPACE pour rejouer", 60, 300);
+      }
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    setInterval(spawnBanana, 1500);
+    gameLoop();
+  </script>
+</body>
+</html>
